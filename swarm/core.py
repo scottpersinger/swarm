@@ -5,8 +5,7 @@ from collections import defaultdict
 from typing import List, Callable, Union
 
 # Package/library imports
-from openai import OpenAI
-
+from litellm import completion
 
 # Local imports
 from .util import function_to_json, debug_print, merge_chunk
@@ -25,9 +24,9 @@ __CTX_VARS_NAME__ = "context_variables"
 
 class Swarm:
     def __init__(self, client=None):
-        if not client:
-            client = OpenAI()
-        self.client = client
+        # LiteLLM doesn't require a client instance, but we'll keep the parameter
+        # for backward compatibility
+        pass
 
     def get_chat_completion(
         self,
@@ -66,7 +65,8 @@ class Swarm:
         if tools:
             create_params["parallel_tool_calls"] = agent.parallel_tool_calls
 
-        return self.client.chat.completions.create(**create_params)
+        # Use LiteLLM's completion instead of OpenAI's client
+        return completion(**create_params)
 
     def handle_function_result(self, result, debug) -> Result:
         match result:
@@ -179,6 +179,7 @@ class Swarm:
 
             yield {"delim": "start"}
             for chunk in completion:
+                # LiteLLM's streaming format is compatible with OpenAI's
                 delta = json.loads(chunk.choices[0].delta.json())
                 if delta["role"] == "assistant":
                     delta["sender"] = active_agent.name
